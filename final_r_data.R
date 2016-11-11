@@ -5,15 +5,185 @@
 
 #Load Data
 path = 'E:\\Northwestern\\Classes\\pred422\\final'
+pathL = 'C:/Users/lstottsg/Desktop/Laura School/Fall 2016/'
 fname = 'charity.csv'
 charity <- read.csv(file=file.path(path,fname)) # load the "charity.csv" file
+
+View(charity)  # allows us to view the data set
+
+#install packages
+install.packages("car")
+install.packages("lattice")
+
+#load libraries
+library(car)
+library(lattice)
 
 ##########################################
 #REQUIREMENT 1 - Exploratory Data Analyis#
 ##########################################
-#Set-up Transformations
+
 charity.t <- charity
-charity.t$avhv <- log(charity.t$avhv)
+attach(charity.t)
+
+names(charity.t)  # names of the variables 
+dim(charity.t)  # dimension (number of rows and columns)
+str(charity.t)  # structure of the data set
+class(charity.t)  # type of data
+summary(charity.t)  #summary of data stats
+
+#subset variables into categorical vs continuous
+charity.cat <- charity.t[2:10]
+names(charity.cat)
+
+charity.cont <- charity.t[11:21]
+names(charity.cont)
+
+#Missing Variables
+
+##Correlations
+
+##Explore Non-Binary Categorical
+
+    #Table, Pie, Histogram
+
+          #chld - Separate into two variables - nochld/chld?
+          table(chld,donr)
+          pie (table(chld))
+          hist(chld, prob =T , ylim =c(0 , 1))
+          lines( density ( chld , na.rm= TRUE ) , col="red")
+          mu <-mean ( chld , na.rm= TRUE )
+          sigma <-sd( chld , na.rm= TRUE )
+          x <-seq (1 ,3 , length =3)
+          y <-dnorm (x , mu , sigma )
+          lines(x ,y , lwd =2 , col=" blue ")
+
+          #hinc
+          table(hinc,donr)
+          pie (table(hinc))
+          hist(hinc, prob =T , ylim =c(0 , 1))
+          lines( density ( hinc , na.rm= TRUE ) , col="red")
+          mu <-mean ( hinc , na.rm= TRUE )
+          sigma <-sd( hinc , na.rm= TRUE )
+          x <-seq (1 ,3 , length =3)
+          y <-dnorm (x , mu , sigma )
+          lines(x ,y , lwd =2 , col=" blue ")
+
+          #wrat
+          table(wrat,donr)
+          pie (table(wrat))
+          hist(wrat, prob =T , ylim =c(0 , 1))
+          lines( density ( wrat , na.rm= TRUE ) , col="red")
+          mu <-mean ( wrat , na.rm= TRUE )
+          sigma <-sd( wrat , na.rm= TRUE )
+          x <-seq (1 ,3 , length =3)
+          y <-dnorm (x , mu , sigma )
+          lines(x ,y , lwd =2 , col=" blue ")
+
+    #Kernel Density Plots
+        par(mfrow=c(2,2))
+
+          #chld
+          d.chld <- density(charity.t$chld)
+          plot(d.chld, main = "Kernel density of Children")
+          polygon(d.chld, col = "red", border = "blue")
+
+          #hinc
+          d.hinc <- density(charity.t$hinc)
+          plot(d.hinc, main = "Kernel density of Children")
+          polygon(d.hinc, col = "red", border = "blue")
+
+          #wrat
+          d.wrat <- density(charity.t$wrat)
+          plot(d.wrat, main = "Kernel density of Children")
+          polygon(d.wrat, col = "red", border = "blue")
+
+
+##Explore Categorical Binary
+
+    #Histograms
+    par(mfrow=c(2,3))
+    
+    hist(charity.cat$reg1,
+         main = "Histogram of Reg1",
+         xlab = "Region 1")
+    
+    hist(charity.cat$reg2,
+         main = "Histogram of Reg2",
+         xlab = "Region 2")
+    
+    hist(charity.cat$reg3,
+         main = "Histogram of Reg3",
+         xlab = "Region 3")
+    
+    hist(charity.cat$reg4,
+         main = "Histogram of Reg4",
+         xlab = "Region 4")
+    
+    hist(charity.cat$home,
+         main = "Histogram of Home",
+         xlab = "Home Ownership")
+    
+    hist(charity.cat$genf,
+         main = "Histogram of Gender",
+         xlab = "Gender")
+
+##Explore Continuous
+
+    #Scatterplots
+        par(mfrow=c(1,1))
+        scatterplot.matrix(charity.cont)
+
+
+    #QQ-Plots for continuous variables
+
+        #need transformations
+        qq(donr ~ avhv)
+        qq(donr ~ incm)
+        qq(donr ~ inca)
+        qq(donr ~ plow)
+
+        #npro - no transformation necessary?
+        qq(donr ~ npro)
+
+        #normal to 500
+        qq(donr ~ tgif)
+
+        #lgif normal to 200
+        qq(donr ~ lgif)
+
+        #rgif - normal to 100
+        qq(donr ~ rgif)
+
+        #tdon - normal to 25
+        qq(donr ~ tdon)
+
+        #tlag - needs transformation
+        qq(donr ~ tlag)
+
+        #agif - sparse after 50
+        qq(donr ~ agif)
+
+
+##Transformations
+
+    #Log
+    charity.t$avhv <- log(charity.t$avhv)
+    
+    #Cubic Root
+    
+    #Squared
+    
+    #Std Dev
+    
+    #T Std Dev
+    
+    #ArcSin
+    
+    #Binned
+    
+    #Interaction
+
 
 #Partition Data
 #Training
@@ -80,6 +250,22 @@ chat.valid.lda1 <- ifelse(post.valid.lda1>cutoff.lda1, 1, 0) # mail to everyone 
 table(chat.valid.lda1, c.valid) # classification table
 
 #~~~~~~~~~~~~~~
+# Quadratic DISCRIMINANT ANALYSIS
+#~~~~~~~~~~~~~~
+
+#example of fitting qda
+model.qda1 <- qda(donr ~ reg1 + reg2 + reg3 + reg4 + home + chld + hinc + I(hinc^2) + genf + wrat + 
+                    avhv + incm + inca + plow + npro + tgif + lgif + rgif + tdon + tlag + agif, 
+                  data.train) # include additional terms on the fly using I()
+
+qda1.donr <- predict(model.qda1, data.valid)$class # make predictions using the validation set
+
+table(qda1.donr, c.valid)  # determines the confusion matrix
+
+mean(qda1.donr==c.valid)   # determines the validation set error
+
+
+#~~~~~~~~~~~~~~
 # LOGSITIC REGRESSION
 #~~~~~~~~~~~~~~
 model.log1 <- glm(donr ~ reg1 + reg2 + reg3 + reg4 + home + chld + hinc + I(hinc^2) + genf + wrat + 
@@ -116,8 +302,27 @@ chat.test <- ifelse(post.test>cutoff.test, 1, 0) # mail to everyone above the cu
 table(chat.test)
 
 #~~~~~~~~~~~~~~
+# Logistic Regression GAM
+#~~~~~~~~~~~~~~
+library(gam)
+# example of fitting gam
+model.gam1 <- lm(donr ~ reg1 + reg2 + reg3 + reg4 + home + chld + hinc + I(hinc^2) + genf + wrat + 
+                   avhv + incm + inca + plow + npro + tgif + lgif + rgif + tdon + tlag + agif, data = data.train)
+
+# examples of fitting GAM using smoothing splines
+model.ss1 <- smooth.spline(x.valid$avhv, c.valid, cv = TRUE)     # finds d.o.f. using LOOCV
+model.ss2 <- smooth.spline(x.valid$incm, c.valid, cv = TRUE)     # finds d.o.f. using LOOCV
+model.gamSS1 <- gam(c.valid ~ s(x.valid$avhv, 2) + s(x.valid$incm, 7) + x.valid$npro, data = data.train)
+
+#~~~~~~~~~~~~~~
 # K-Nearest Neighbor
 #~~~~~~~~~~~~~~
+library(class)
+
+#example of fitting knn
+knn.pred <- knn(x.train, x.valid, c.train, k = 1)
+table(knn.pred, c.valid) # determines the confusion matrix
+(527+614)/2018 # 56% of the observations are correctly predicted
 
 ##########################################
 #REQUIREMENT 3 - PREDICTION MODELING     #
