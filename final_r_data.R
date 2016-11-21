@@ -1,107 +1,177 @@
+---
+title: "Course Project: Practical Machine Learning"
+subtitle: "Laura Stotts Gorans, Phil Harm, Tim Kiely "
+output: word_document
+---
+
+
+```{r, include = F}
+# header section. put knitr options here
+knitr::opts_chunk$set(
+	echo = TRUE,
+	message = FALSE,
+	warning = FALSE,
+	fig.width=8,
+	fig.height=8
+)
+```
+
+
+```{r}
+
 #############################################
 # PREDICT 422 Practical Machine Learning    #
 # Laura Stotts Gorans, Phil Harm, Tim Kiely #
 #############################################
 
-#Load Data
-path = 'E:\\Northwestern\\Classes\\pred422\\final'
-pathL = 'C:/Users/lstottsg/Desktop/Laura School/Fall 2016/'
-fname = 'charity.csv'
-charity <- read.csv(file=file.path(path,fname)) # load the "charity.csv" file
 
-View(charity)  # allows us to view the data set
+# Load packages. Check if they are installed first though
+list.of.packages <- c(
+  "tidyverse" # tidyverse is a wrapper that contains dplyr, ggplot, tidyr, readr and a bunch of other great Hadley stuff
+  ,"corrplot" #correlation plot
+  ,"lattice" #quantile plots
+  ,"tibble"
+  )
 
-#install packages
-install.packages("car")
-install.packages("lattice")
+new.packages <- list.of.packages[!(list.of.packages %in% installed.packages()[,"Package"])]
+if(length(new.packages)) install.packages(new.packages)
+lapply(list.of.packages,library, character.only=T)
 
-#load libraries
-library(car)
-library(lattice)
+# Load Data
+rm(list=ls())
+charity <- read_csv("charity.csv") # load the "charity.csv" file
 
+# quick view of the data
+glimpse(charity)
+View(charity)
+```
+
+
+# EDA
+
+```{r}
 ##########################################
 #REQUIREMENT 1 - Exploratory Data Analyis#
 ##########################################
+charity.eda <- charity
+attach(charity.eda)
 
-charity.t <- charity
-attach(charity.t)
+names(charity.eda)  # names of the variables 
+dim(charity.eda)  # dimension (number of rows and columns)
+str(charity.eda)  # structure of the data set
+class(charity.eda)  # type of data
 
-names(charity.t)  # names of the variables 
-dim(charity.t)  # dimension (number of rows and columns)
-str(charity.t)  # structure of the data set
-class(charity.t)  # type of data
-summary(charity.t)  #summary of data stats
+#remove "id", from our list of variables
+charity.eda <- charity.eda[2:23]
 
-#subset variables into categorical vs continuous
-charity.cat <- charity.t[2:10]
+#create subset of categorical predictor variables
+charity.cat <- charity.eda[2:10]
 names(charity.cat)
 
-charity.cont <- charity.t[11:21]
+#create subset of continuous predictor variables
+charity.cont <- charity.eda[11:20]
 names(charity.cont)
+class(charity.cont)
 
-#Missing Variables
+```
 
-##Correlations
 
-##Explore Non-Binary Categorical
+
+# Missing data?
+```{r}
+summary(charity.eda)
+
+#use na.omit() to remove all the rows that have missing values in any variable
+charity.eda <- na.omit(charity.eda)
+dim(charity.eda)
+sum(is.na(charity.eda))
+
+```
+
+Both of our response variables, donr and damt contain 2007 NA's. We might want to interpolate these values or possibly filter them out completely.
+
+
+## Histogram of each numeric variable
+```{r}
+
+num_vars <- names(charity.eda)[sapply(charity.eda, is.numeric)]
+
+charity.eda %>% 
+  select(one_of(num_vars)) %>% 
+  gather(Var,Value) %>% 
+  mutate(Value=as.numeric(Value)) %>% 
+  ggplot()+
+  aes(x=Value)+
+  geom_histogram()+
+  facet_wrap(~Var, scales="free")
+
+
+```
+
+
+
+## Explore Non-Binary Categorical
+```{r}
 
     #Table, Pie, Histogram
 
-          #chld - Separate into two variables - nochld/chld?
-          table(chld,donr)
-          pie (table(chld))
-          hist(chld, prob =T , ylim =c(0 , 1))
-          lines( density ( chld , na.rm= TRUE ) , col="red")
-          mu <-mean ( chld , na.rm= TRUE )
-          sigma <-sd( chld , na.rm= TRUE )
-          x <-seq (1 ,3 , length =3)
-          y <-dnorm (x , mu , sigma )
-          lines(x ,y , lwd =2 , col=" blue ")
-
-          #hinc
-          table(hinc,donr)
-          pie (table(hinc))
-          hist(hinc, prob =T , ylim =c(0 , 1))
-          lines( density ( hinc , na.rm= TRUE ) , col="red")
-          mu <-mean ( hinc , na.rm= TRUE )
-          sigma <-sd( hinc , na.rm= TRUE )
-          x <-seq (1 ,3 , length =3)
-          y <-dnorm (x , mu , sigma )
-          lines(x ,y , lwd =2 , col=" blue ")
-
-          #wrat
-          table(wrat,donr)
-          pie (table(wrat))
-          hist(wrat, prob =T , ylim =c(0 , 1))
-          lines( density ( wrat , na.rm= TRUE ) , col="red")
-          mu <-mean ( wrat , na.rm= TRUE )
-          sigma <-sd( wrat , na.rm= TRUE )
-          x <-seq (1 ,3 , length =3)
-          y <-dnorm (x , mu , sigma )
-          lines(x ,y , lwd =2 , col=" blue ")
-
+      #chld - Separate into two variables - nochld/chld?
+      table(chld,donr)
+      pie (table(chld))
+      hist(chld, prob =T , ylim =c(0 , 1))
+      lines( density ( chld , na.rm= TRUE ) , col="red")
+      mu <-mean ( chld , na.rm= TRUE )
+      sigma <-sd( chld , na.rm= TRUE )
+      x <-seq (1 ,3 , length =3)
+      y <-dnorm (x , mu , sigma )
+      lines(x ,y , lwd =2 , col=" blue ")
+      
+      #hinc
+      table(hinc,donr)
+      pie (table(hinc))
+      hist(hinc, prob =T , ylim =c(0 , 1))
+      lines( density ( hinc , na.rm= TRUE ) , col="red")
+      mu <-mean ( hinc , na.rm= TRUE )
+      sigma <-sd( hinc , na.rm= TRUE )
+      x <-seq (1 ,3 , length =3)
+      y <-dnorm (x , mu , sigma )
+      lines(x ,y , lwd =2 , col=" blue ")
+      
+      #wrat
+      table(wrat,donr)
+      pie (table(wrat))
+      hist(wrat, prob =T , ylim =c(0 , 1))
+      lines( density ( wrat , na.rm= TRUE ) , col="red")
+      mu <-mean ( wrat , na.rm= TRUE )
+      sigma <-sd( wrat , na.rm= TRUE )
+      x <-seq (1 ,3 , length =3)
+      y <-dnorm (x , mu , sigma )
+      lines(x ,y , lwd =2 , col=" blue ")
+    
     #Kernel Density Plots
-        par(mfrow=c(2,2))
+    par(mfrow=c(2,2))
+    
+      #chld
+      d.chld <- density(chld)
+      plot(d.chld, main = "Kernel density of Children")
+      polygon(d.chld, col = "red", border = "blue")
+      
+      #hinc
+      d.hinc <- density(hinc)
+      plot(d.hinc, main = "Kernel density of Household Income")
+      polygon(d.hinc, col = "red", border = "blue")
+      
+      #wrat
+      d.wrat <- density(wrat)
+      plot(d.wrat, main = "Kernel density of Wealth Rating")
+      polygon(d.wrat, col = "red", border = "blue")
+```
 
-          #chld
-          d.chld <- density(charity.t$chld)
-          plot(d.chld, main = "Kernel density of Children")
-          polygon(d.chld, col = "red", border = "blue")
-
-          #hinc
-          d.hinc <- density(charity.t$hinc)
-          plot(d.hinc, main = "Kernel density of Children")
-          polygon(d.hinc, col = "red", border = "blue")
-
-          #wrat
-          d.wrat <- density(charity.t$wrat)
-          plot(d.wrat, main = "Kernel density of Children")
-          polygon(d.wrat, col = "red", border = "blue")
 
 
-##Explore Categorical Binary
+## Explore Binary Categorical
+```{r}      
 
-    #Histograms
     par(mfrow=c(2,3))
     
     hist(charity.cat$reg1,
@@ -128,62 +198,205 @@ names(charity.cont)
          main = "Histogram of Gender",
          xlab = "Gender")
 
-##Explore Continuous
 
     #Scatterplots
-        par(mfrow=c(1,1))
-        scatterplot.matrix(charity.cont)
+      par(mfrow=c(1,1))
+      pairs(~ donr + avhv, charity.eda)
+      plot(avhv, donr)
+
+```
+
+We observe the following: 
+
+* AGIF (Average dollar amount of gifts to date): Mostly normal with skew to right
+* ID (data identifier): unique ID (remeber that the binwidth is ~30 in the histograms)
+* reg1, reg2, reg3, reg4: Binary region indicators. Reg 3 and 4 have about 1/4th what reg 1 and 2 have. May need to overweight/undersample for those regions
+* home (Homeowner): 0's are vastly underweighted here. We may need to apply under-sampling techniques
+* chld (numebr of children): roughly normally distributed around the value 2, but with many zero values
+* hinc (household income in seven categories): Category 4 is by far the most popular, which makes sense. 
+* genf (gender): sample is roughly 65% female
+* wrat (Wealth Rating, 9 is highest 0 is lowest): Many 8's and 9's. This data is skewed towards wealthier people
+* avhv (Average Home Value in $ thousands): Nearly normal with a mean of approx $150K, skewed right
+* incm (Median Family Income in neighborhood in $ thousands): Nearly normal with a mean of approx $40K
+* inca (Average family income in neighborhood in $ thousands): Nearly normal with a mean of approx $50K
+* plow (% categorized as low income in neighborhood): long tailed, highest concentration around 0
+* npro (total number of promotions received to date): normally distributed
+* tgif (dollar amount total gifts to date): Normally distributed, but with outliers. may need to trim
+* lgif (Dollar amount of largest gift to date): Normally distributed, but with outliers. may need to trim
+* rgif (Dollar amount of most recent gift): Normally distributed, but with outliers. may need to trim
+* tdon (Number of months since last donation): Nearly normal, but with some high concentrations around 15 and 21. Also skewed right
+* tlag (Number of months between first and second gift): Skewed right
+* agif (Average dollar amount of gifts to date): Nearly normal. Might be a good candidate to create a multiplier vs largest gift
+* donr (Donor, binary): Response Variable. Evenly distributed
+* damt (Donation in dollars): Response Variable. Zero-inflated distribution with an otherwise normal distribution
 
 
-    #QQ-Plots for continuous variables
 
-        #need transformations
-        qq(donr ~ avhv)
-        qq(donr ~ incm)
-        qq(donr ~ inca)
-        qq(donr ~ plow)
-
-        #npro - no transformation necessary?
-        qq(donr ~ npro)
-
-        #normal to 500
-        qq(donr ~ tgif)
-
-        #lgif normal to 200
-        qq(donr ~ lgif)
-
-        #rgif - normal to 100
-        qq(donr ~ rgif)
-
-        #tdon - normal to 25
-        qq(donr ~ tdon)
-
-        #tlag - needs transformation
-        qq(donr ~ tlag)
-
-        #agif - sparse after 50
-        qq(donr ~ agif)
+# QQ Plots of donr
+```{r, fig.width=3,fig.height=3}
+ranges <- sapply(charity.eda,max)
+binary_vars <- ranges==1
+continuous_vars <- ranges>1
+cont_select <- continuous_vars[continuous_vars==T]
+cont_select <- names(na.omit(cont_select))
+cont_select <- cont_select[1:15]
 
 
-##Transformations
+for(i in 1:length(cont_select)){
+  var <- charity.eda %>% select(one_of(cont_select[i]))
+  name <- names(var)
+  mod <- as.formula(paste0("donr~",name))
+  a <- qq(mod, data = charity.eda, main = name)
+  print(a)
+}
 
-    #Log
-    charity.t$avhv <- log(charity.t$avhv)
-    
-    #Cubic Root
-    
-    #Squared
-    
-    #Std Dev
-    
-    #T Std Dev
-    
-    #ArcSin
-    
+```
+
+
+
+## Explore Binary Categorical
+```{r} 
+#QQ-Plots for continuous variables
+
+  #need transformations
+  qq(donr ~ avhv)
+  qq(donr ~ incm)
+  qq(donr ~ inca)
+  qq(donr ~ plow)
+  
+  #npro - no transformation necessary?
+  qq(donr ~ npro)
+  
+  #normal to 500
+  qq(donr ~ tgif)
+  
+  #lgif normal to 200
+  qq(donr ~ lgif)
+  
+  #rgif - normal to 100
+  qq(donr ~ rgif)
+  
+  #tdon - normal to 25
+  qq(donr ~ tdon)
+  
+  #tlag - needs transformation
+  qq(donr ~ tlag)
+  
+  #agif - sparse after 50
+  qq(donr ~ agif)
+
+#Boxplots for Continuous Variables
+  par(mfrow=c(1,1))
+  boxplot(avhv,
+          main = toupper("Boxplot of AVHV"),
+          ylab = "Age in years",
+          col = "blue")
+
+```
+
+
+## Overlap of Region data?
+```{r}
+charity.eda %>% 
+  group_by(reg1,reg2,reg3,reg4) %>% 
+  summarise(count=n())
+
+```
+
+The region data is mutually exclusive
+
+
+# Cross correlations?
+```{r}
+M <- cor(charity.eda %>% select(one_of(num_vars)),use = "na.or.complete")
+corrplot(M, order = "hclust", type="upper")
+```
+
+Some auto-correlations between RGIF (Dollar amount of most recent gift) LGID (Last gift) and AGIF (average gift). Auto-correlations also between Median and Average Income and home prices. Inverse correlation between PLOW and the income variables.
+
+
+# Do the NA Values in the reponse vars have different distributions?
+```{r}
+the_nas <- charity.eda %>% filter(is.na(donr))
+the_complete <- charity.eda %>% filter(!is.na(donr))
+
+
+# full set represented
+dim(the_nas)
+dim(the_complete)
+dim(the_nas)[1]+dim(the_complete)[1]==nrow(charity.eda)
+
+
+na_means <- suppressWarnings(sapply(the_nas,mean))
+complete_means <- suppressWarnings(sapply(the_complete,mean))
+a<-as.data.frame(na_means)
+a$rows <- rownames(a)
+b<-as.data.frame(complete_means)
+b$rows <- rownames(b)
+c <- left_join(a,b)
+c <- c %>% mutate(abs_diff = abs(na_means-complete_means))
+c %>% arrange(-abs_diff)
+
+
+# run a t-test, hypothesis is that both means are the same:
+t.test(c$na_means,c$complete_means)
+# fail to reject
+```
+
+The NAs in the repsonse variables have similar population means, therefore, it might be permissible to interpolate the responses.
+
+
+
+
+# TRANSFORMATIONS
+
+```{r}
+#Set-up Transformations
+obs <- nrow(charity.cont)
+for(i in obs){
+
+  signedlog10 = function(x) {
+  ifelse(abs(x) <= 1, 0, sign(x)*log10(abs(x)))
+  }
+  
+  cuberoot = function(x) {
+  x^(1/3)
+  }
+  
+  square = function(x) {
+  x^2
+  }
+  
+  charity.cont <- as_data_frame(charity.cont)
+
+  charity.log <- as_data_frame(apply(charity.cont, 2, log))
+  charity.log10 <- apply(charity.cont, 2, signedlog10)
+  charity.sqrt <- apply(charity.cont, 2, sqrt)
+  charity.sqr <- apply(charity.cont, 2, square)
+  charity.cubrt <- apply(charity.cont, 2, cuberoot)
+  
+  charity.transform4 <- transform(charity.cont, log=charity.log)
+  charity.transform3 <- transform(charity.transform4, log10=charity.log10)
+  charity.transform2 <- transform(charity.transform3, sqrt=charity.sqrt)
+  charity.transform1 <- transform(charity.transform2, sqr=charity.sqr)
+  charity.transform <- transform(charity.transform1, cubrt=charity.cubrt)
+  
+}
+
+View(charity.transform)
+
     #Binned
     
     #Interaction
 
+
+```
+
+
+
+# PARTITION THE DATA FOR CROSS VALIDATION
+
+```{r}
 
 #Partition Data
 #Training
